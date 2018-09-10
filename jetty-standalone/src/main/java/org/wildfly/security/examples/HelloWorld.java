@@ -30,10 +30,16 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.security.ConstraintMapping;
+import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.security.HashLoginService;
+import org.eclipse.jetty.security.LoginService;
+import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletHandler;
+import org.eclipse.jetty.util.security.Constraint;
 import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.permission.LoginPermission;
 import org.wildfly.security.auth.realm.SimpleMapBackedSecurityRealm;
@@ -61,9 +67,34 @@ public class HelloWorld {
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(8080);
         server.setConnectors(new Connector[] {connector});
+
+        LoginService loginService = new HashLoginService("MyRealm",
+                "src/test/resources/realm.properties");
+        server.addBean(loginService);
+
+        //ServletHandler servletHandler = new ServletHandler();
+        //server.setHandler(servletHandler);
+        ConstraintSecurityHandler security = new ConstraintSecurityHandler();
+        server.setHandler(security);
+
+
+        Constraint constraint = new Constraint();
+        constraint.setName("auth");
+        constraint.setAuthenticate(true);
+        constraint.setRoles(new String[] { "user", "admin" });
+
+        ConstraintMapping mapping = new ConstraintMapping();
+        mapping.setPathSpec("/status");
+        mapping.setConstraint(constraint);
+
+        security.setConstraintMappings(Collections.singletonList(mapping));
+        security.setAuthenticator(new BasicAuthenticator());
+        security.setLoginService(loginService);
+
+
         ServletHandler servletHandler = new ServletHandler();
-        server.setHandler(servletHandler);
         servletHandler.addServletWithMapping(BlockingServlet.class, "/status");
+        security.setHandler(servletHandler);
         server.start();
 
     }
