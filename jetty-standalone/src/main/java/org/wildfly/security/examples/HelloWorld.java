@@ -30,6 +30,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.HashLoginService;
@@ -39,6 +40,8 @@ import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletHandler;
+import org.eclipse.jetty.util.log.Log;
+import org.eclipse.jetty.util.log.StdErrLog;
 import org.eclipse.jetty.util.security.Constraint;
 import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.permission.LoginPermission;
@@ -50,6 +53,7 @@ import org.wildfly.security.auth.server.MechanismConfigurationSelector;
 import org.wildfly.security.auth.server.MechanismRealmConfiguration;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.credential.PasswordCredential;
+import org.wildfly.security.http.HttpAuthenticator;
 import org.wildfly.security.http.HttpServerAuthenticationMechanismFactory;
 import org.wildfly.security.http.util.FilterServerMechanismFactory;
 import org.wildfly.security.http.util.SecurityProviderServerMechanismFactory;
@@ -62,15 +66,19 @@ public class HelloWorld {
     private static final WildFlyElytronProvider elytronProvider = new WildFlyElytronProvider();
 
     public static void main(String[] args) throws Exception {
+        StdErrLog logger = new StdErrLog();
+        logger.setDebugEnabled(true);
+        Log.setLog(logger);
+
         final SecurityDomain securityDomain = createSecurityDomain();
         Server server = new Server();
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(8080);
         server.setConnectors(new Connector[] {connector});
 
-        LoginService loginService = new HashLoginService("MyRealm",
-                "src/test/resources/realm.properties");
-        server.addBean(loginService);
+        //LoginService loginService = new HashLoginService("MyRealm",
+        //        "src/test/resources/realm.properties");
+        //server.addBean(loginService);
 
         //ServletHandler servletHandler = new ServletHandler();
         //server.setHandler(servletHandler);
@@ -78,18 +86,19 @@ public class HelloWorld {
         server.setHandler(security);
 
 
-        Constraint constraint = new Constraint();
-        constraint.setName("auth");
-        constraint.setAuthenticate(true);
-        constraint.setRoles(new String[] { "user", "admin" });
+        //Constraint constraint = new Constraint();
+        //constraint.setName("auth");
+        //constraint.setAuthenticate(true);
+        //constraint.setRoles(new String[] { "user", "admin" });
 
-        ConstraintMapping mapping = new ConstraintMapping();
-        mapping.setPathSpec("/status");
-        mapping.setConstraint(constraint);
+        //ConstraintMapping mapping = new ConstraintMapping();
+        //mapping.setPathSpec("/status");
+        //mapping.setConstraint(constraint);
 
-        security.setConstraintMappings(Collections.singletonList(mapping));
-        security.setAuthenticator(new BasicAuthenticator());
-        security.setLoginService(loginService);
+        //security.setConstraintMappings(Collections.singletonList(mapping));
+        //security.setAuthenticator(new BasicAuthenticator());
+        security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(createSecurityDomain()));
+        //security.setLoginService(loginService);
 
 
         ServletHandler servletHandler = new ServletHandler();
@@ -103,7 +112,7 @@ public class HelloWorld {
         PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR, elytronProvider);
 
         Map<String, SimpleRealmEntry> passwordMap = new HashMap<>();
-        passwordMap.put("elytron", new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("Coleoptera".toCharArray()))))));
+        passwordMap.put("elytron", new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray()))))));
 
         SimpleMapBackedSecurityRealm simpleRealm = new SimpleMapBackedSecurityRealm(() -> new Provider[] { elytronProvider });
         simpleRealm.setPasswordMap(passwordMap);
