@@ -170,4 +170,47 @@ public class HelloWorld {
             response.getWriter().println("{ \"status\": \"ok\"}");
         }
     }
+
+    /**
+     * SIMPLE JETTY AUTHENTICATION, ACCESS http://localhost:8080/status using user:password
+     */
+    /*public static void main(String[] args) throws Exception {
+    https://www.eclipse.org/jetty/documentation/9.4.x/embedded-examples.html
+        final SecurityDomain securityDomain = createSecurityDomain();
+        Server server = new Server();
+        ServerConnector connector = new ServerConnector(server);
+        connector.setPort(8080);
+        server.setConnectors(new Connector[] {connector});
+
+        LoginService loginService = new HashLoginService("MyRealm",
+                "src/test/resources/realm.properties");
+        server.addBean(loginService);
+
+        //ServletHandler servletHandler = new ServletHandler();
+        //server.setHandler(servletHandler);
+        ConstraintSecurityHandler security = new ConstraintSecurityHandler();
+        server.setHandler(security);
+
+
+        Constraint constraint = new Constraint();
+        constraint.setName("auth");
+        constraint.setAuthenticate(true);
+        constraint.setRoles(new String[] { "user", "admin" });
+
+        ConstraintMapping mapping = new ConstraintMapping();
+        mapping.setPathSpec("/status");
+        mapping.setConstraint(constraint);
+
+        security.setConstraintMappings(Collections.singletonList(mapping));
+        security.setAuthenticator(new BasicAuthenticator());
+        security.setLoginService(loginService);
+
+
+        ServletHandler servletHandler = new ServletHandler();
+        servletHandler.addServletWithMapping(BlockingServlet.class, "/status");
+        security.setHandler(servletHandler);
+        server.start();
+
+    }*/
+
 }
