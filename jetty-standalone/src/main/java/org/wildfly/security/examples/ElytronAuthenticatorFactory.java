@@ -1,7 +1,5 @@
 package org.wildfly.security.examples;
 
-
-
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.LoginService;
@@ -17,11 +15,8 @@ import org.wildfly.security.authz.RoleDecoder;
 import org.wildfly.security.http.HttpAuthenticationException;
 import org.wildfly.security.http.HttpServerAuthenticationMechanism;
 import org.wildfly.security.http.HttpServerAuthenticationMechanismFactory;
-import org.wildfly.security.http.impl.ServerMechanismFactoryImpl;
-import org.wildfly.security.http.util.AggregateServerMechanismFactory;
 import org.wildfly.security.http.util.FilterServerMechanismFactory;
 import org.wildfly.security.http.util.SecurityProviderServerMechanismFactory;
-import org.wildfly.security.http.util.ServiceLoaderServerMechanismFactory;
 import org.wildfly.security.password.PasswordFactory;
 
 import javax.servlet.ServletContext;
@@ -39,34 +34,34 @@ import static org.wildfly.security.password.interfaces.ClearPassword.ALGORITHM_C
  */
 public class ElytronAuthenticatorFactory implements Authenticator.Factory {
 
+    private SecurityDomain securityDomain;
     private HttpAuthenticationFactory httpAuthenticationFactory;
-    private String securityRealmType;
-    private String roleDecoderType;
 
     public ElytronAuthenticatorFactory() throws Exception {
+    }
 
+    public ElytronAuthenticatorFactory(SecurityDomain securityDomain) throws Exception {
     }
 
     @Override
     public Authenticator getAuthenticator(Server server, ServletContext context, Authenticator.AuthConfiguration configuration, IdentityService identityService, LoginService loginService) {
         try {
-            PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR);
+            /*PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR);
             SecurityDomain.Builder builder = SecurityDomain.builder()
                     .setDefaultRealmName("TestRealm");
 
-            builder.addRealm("TestRealm", (SecurityRealm) Thread.currentThread().getContextClassLoader().loadClass(this.securityRealmType).newInstance()).setRoleDecoder((RoleDecoder) Thread.currentThread().getContextClassLoader().loadClass(this.roleDecoderType).newInstance());
+            builder.addRealm("TestRealm", (SecurityRealm) Thread.currentThread().getContextClassLoader().loadClass(this.securityRealmType).newInstance()).setRoleDecoder((RoleDecoder) Thread.currentThread().getContextClassLoader().loadClass(this.roleDecoderType).newInstance());*/
 
             HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {new WildFlyElytronProvider()});
             HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "BASIC");
 
             httpAuthenticationFactory = HttpAuthenticationFactory.builder()
-                    .setSecurityDomain(builder.build())
+                    .setSecurityDomain(securityDomain)
                     .setMechanismConfigurationSelector(MechanismConfigurationSelector.constantSelector(
-                                                        MechanismConfiguration.builder()
-                                                                        .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName("Elytron Realm").build())
-                                                                .build()))
-                                .setFactory(httpServerMechanismFactory)
-
+                            MechanismConfiguration.builder()
+                                    .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName("Elytron Realm").build())
+                                    .build()))
+                    .setFactory(httpServerMechanismFactory)
                     .build();
 
             return new ElytronAuthenticatorWrapper(configuration, new Supplier<List<HttpServerAuthenticationMechanism>>() {
@@ -101,11 +96,4 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
         }
     }
 
-    public void setSecurityRealmType(String securityRealmType) {
-        this.securityRealmType = securityRealmType;
-    }
-
-    public void setRoleDecoderType(String roleDecoderType) {
-        this.roleDecoderType = roleDecoderType;
-    }
 }
