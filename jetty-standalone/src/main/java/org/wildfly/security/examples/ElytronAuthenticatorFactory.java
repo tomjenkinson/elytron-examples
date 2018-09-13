@@ -37,10 +37,20 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
     private SecurityDomain securityDomain;
     private HttpAuthenticationFactory httpAuthenticationFactory;
 
-    public ElytronAuthenticatorFactory() throws Exception {
-    }
-
     public ElytronAuthenticatorFactory(SecurityDomain securityDomain) throws Exception {
+        System.err.println("******** CREATING AUTHENTICATOR FACTORY");
+        this.securityDomain = securityDomain;
+        HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {new WildFlyElytronProvider()});
+        HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "BASIC");
+
+        httpAuthenticationFactory = HttpAuthenticationFactory.builder()
+                .setSecurityDomain(securityDomain)
+                .setMechanismConfigurationSelector(MechanismConfigurationSelector.constantSelector(
+                        MechanismConfiguration.builder()
+                                .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName("Elytron Realm").build())
+                                .build()))
+                .setFactory(httpServerMechanismFactory)
+                .build();
     }
 
     @Override
@@ -51,31 +61,22 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
                     .setDefaultRealmName("TestRealm");
 
             builder.addRealm("TestRealm", (SecurityRealm) Thread.currentThread().getContextClassLoader().loadClass(this.securityRealmType).newInstance()).setRoleDecoder((RoleDecoder) Thread.currentThread().getContextClassLoader().loadClass(this.roleDecoderType).newInstance());*/
+            System.err.println("\n\n\n********** GETTING AUTHENTICATOR ************");
 
-            HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {new WildFlyElytronProvider()});
-            HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "BASIC");
-
-            httpAuthenticationFactory = HttpAuthenticationFactory.builder()
-                    .setSecurityDomain(securityDomain)
-                    .setMechanismConfigurationSelector(MechanismConfigurationSelector.constantSelector(
-                            MechanismConfiguration.builder()
-                                    .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName("Elytron Realm").build())
-                                    .build()))
-                    .setFactory(httpServerMechanismFactory)
-                    .build();
 
             return new ElytronAuthenticatorWrapper(configuration, new Supplier<List<HttpServerAuthenticationMechanism>>() {
                 @Override
                 public List<HttpServerAuthenticationMechanism> get() {
                     return getAuthenticationMechanisms();
                 }
-            });
+            }, securityDomain);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     private List<HttpServerAuthenticationMechanism> getAuthenticationMechanisms() {
+        System.err.println("\n\n\n********** GETTING AUTHENTICATION MECHANISMS ");
         return httpAuthenticationFactory.getMechanismNames().stream()
                 .map(new Function<String, HttpServerAuthenticationMechanism>() {
                     @Override
@@ -88,6 +89,7 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
     }
 
     private HttpServerAuthenticationMechanism createMechanism(final String mechanismName) {
+        System.err.println("\n\n\n **************** CREATING MECHANISMS");
         try {
             return httpAuthenticationFactory.createMechanism(mechanismName);
         } catch (HttpAuthenticationException e) {

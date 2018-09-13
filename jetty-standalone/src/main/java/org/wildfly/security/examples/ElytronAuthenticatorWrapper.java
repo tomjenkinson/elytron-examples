@@ -5,6 +5,8 @@ import org.eclipse.jetty.security.ServerAuthException;
 import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.util.security.Constraint;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.http.HttpAuthenticationException;
 import org.wildfly.security.http.HttpAuthenticator;
 import org.wildfly.security.http.HttpServerAuthenticationMechanism;
@@ -21,10 +23,12 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
 
     private final AuthConfiguration configuration;
     private final Supplier<List<HttpServerAuthenticationMechanism>> mechanismSupplier;
+    private final SecurityDomain securityDomain;
 
-    public ElytronAuthenticatorWrapper(AuthConfiguration configuration, Supplier<List<HttpServerAuthenticationMechanism>> mechanismSupplier) {
+    public ElytronAuthenticatorWrapper(AuthConfiguration configuration, Supplier<List<HttpServerAuthenticationMechanism>> mechanismSupplier, SecurityDomain securityDomain) {
         this.configuration = configuration;
         this.mechanismSupplier = mechanismSupplier;
+        this.securityDomain = securityDomain;
     }
 
     @Override
@@ -34,7 +38,8 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
 
     @Override
     public String getAuthMethod() {
-        return this.configuration.getAuthMethod();
+        //return this.configuration.getAuthMethod();
+        return Constraint.__BASIC_AUTH;
     }
 
     @Override
@@ -44,9 +49,11 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
 
     @Override
     public Authentication validateRequest(ServletRequest servletRequest, ServletResponse servletResponse, boolean mandatory) throws ServerAuthException {
+        System.out.println("*************** VALIDATING REQUEST");
         Request request = (Request) servletRequest;
         Response response = (Response) servletResponse;
         HttpAuthenticator authenticator = HttpAuthenticator.builder()
+                .setSecurityDomain(securityDomain)
                 .setMechanismSupplier(mechanismSupplier)
                 .setHttpExchangeSpi(new ElytronHttpExchange(request, response))
                 .setRequired(mandatory)
@@ -54,8 +61,10 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
                 .build();
 
         try {
+            System.err.println("**** ATTEMPTING TO AUTHENTICATE");
             authenticator.authenticate();
         } catch (HttpAuthenticationException e) {
+            throw new ServerAuthException(e);
         }
 
         return request.getAuthentication();

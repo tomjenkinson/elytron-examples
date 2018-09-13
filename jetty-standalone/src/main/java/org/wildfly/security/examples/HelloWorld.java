@@ -40,6 +40,7 @@ import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletHandler;
+import org.eclipse.jetty.util.log.AbstractLogger;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.StdErrLog;
 import org.eclipse.jetty.util.security.Constraint;
@@ -68,7 +69,10 @@ public class HelloWorld {
     public static void main(String[] args) throws Exception {
         StdErrLog logger = new StdErrLog();
         logger.setDebugEnabled(true);
+        logger.setLevel(AbstractLogger.LEVEL_ALL);
         Log.setLog(logger);
+
+        System.err.println("************ SETTING UP");
 
         final SecurityDomain securityDomain = createSecurityDomain();
         Server server = new Server();
@@ -76,9 +80,9 @@ public class HelloWorld {
         connector.setPort(8080);
         server.setConnectors(new Connector[] {connector});
 
-        //LoginService loginService = new HashLoginService("MyRealm",
-        //        "src/test/resources/realm.properties");
-        //server.addBean(loginService);
+        LoginService loginService = new HashLoginService("MyRealm",
+                "src/test/resources/realm.properties");
+        server.addBean(loginService);
 
         //ServletHandler servletHandler = new ServletHandler();
         //server.setHandler(servletHandler);
@@ -86,19 +90,19 @@ public class HelloWorld {
         server.setHandler(security);
 
 
-        //Constraint constraint = new Constraint();
-        //constraint.setName("auth");
-        //constraint.setAuthenticate(true);
-        //constraint.setRoles(new String[] { "user", "admin" });
+        Constraint constraint = new Constraint();
+        constraint.setName("auth");
+        constraint.setAuthenticate(true);
+        constraint.setRoles(new String[] { "user", "admin" });
 
-        //ConstraintMapping mapping = new ConstraintMapping();
-        //mapping.setPathSpec("/status");
-        //mapping.setConstraint(constraint);
+        ConstraintMapping mapping = new ConstraintMapping();
+        mapping.setPathSpec("/status");
+        mapping.setConstraint(constraint);
 
-        //security.setConstraintMappings(Collections.singletonList(mapping));
+        security.setConstraintMappings(Collections.singletonList(mapping));
         //security.setAuthenticator(new BasicAuthenticator());
         security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(createSecurityDomain()));
-        //security.setLoginService(loginService);
+        security.setLoginService(loginService);
 
 
         ServletHandler servletHandler = new ServletHandler();
