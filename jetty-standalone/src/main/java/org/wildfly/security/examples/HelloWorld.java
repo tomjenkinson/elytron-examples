@@ -98,8 +98,8 @@ public class HelloWorld {
         mapping.setConstraint(constraint);
 
         security.setConstraintMappings(Collections.singletonList(mapping));
-        //security.setAuthenticator(new BasicAuthenticator());
-        security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(securityDomain));
+        security.setAuthenticator(new ElytronAuthenticator(securityDomain));
+        //security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(securityDomain));
         security.setLoginService(loginService);
 
 
@@ -158,22 +158,6 @@ public class HelloWorld {
         builder.setPermissionMapper((principal, roles) -> PermissionVerifier.from(new LoginPermission()));
 
         return builder.build();
-    }
-
-
-
-    private static HttpAuthenticationFactory createHttpAuthenticationFactory(final SecurityDomain securityDomain) {
-        HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {elytronProvider});
-        HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "BASIC");
-
-        return HttpAuthenticationFactory.builder()
-                .setSecurityDomain(securityDomain)
-                .setMechanismConfigurationSelector(MechanismConfigurationSelector.constantSelector(
-                        MechanismConfiguration.builder()
-                                .addMechanismRealm(MechanismRealmConfiguration.builder().setRealmName("Elytron Realm").build())
-                                .build()))
-                .setFactory(httpServerMechanismFactory)
-                .build();
     }
 
     public static class BlockingServlet extends HttpServlet {
