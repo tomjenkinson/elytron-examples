@@ -38,8 +38,8 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
 
     @Override
     public String getAuthMethod() {
-        //return this.configuration.getAuthMethod();
-        return Constraint.__BASIC_AUTH;
+        return this.configuration.getAuthMethod();
+        //return Constraint.__BASIC_AUTH;
     }
 
     @Override
