@@ -5,7 +5,6 @@ import org.eclipse.jetty.security.ServerAuthException;
 import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
-import org.eclipse.jetty.util.security.Constraint;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.http.HttpAuthenticationException;
 import org.wildfly.security.http.HttpAuthenticator;
@@ -39,7 +38,6 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
     @Override
     public String getAuthMethod() {
         return this.configuration.getAuthMethod();
-        //return Constraint.__BASIC_AUTH;
     }
 
     @Override
