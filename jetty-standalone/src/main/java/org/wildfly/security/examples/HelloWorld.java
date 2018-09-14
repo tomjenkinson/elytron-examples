@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -37,9 +38,13 @@ import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.HashLoginService;
 import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.authentication.BasicAuthenticator;
+import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.eclipse.jetty.servlet.ServletHandler;
 import org.eclipse.jetty.util.log.AbstractLogger;
 import org.eclipse.jetty.util.log.Log;
@@ -54,11 +59,13 @@ import org.wildfly.security.auth.server.MechanismConfiguration;
 import org.wildfly.security.auth.server.MechanismConfigurationSelector;
 import org.wildfly.security.auth.server.MechanismRealmConfiguration;
 import org.wildfly.security.auth.server.SecurityDomain;
+import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.authz.MapAttributes;
 import org.wildfly.security.authz.RoleDecoder;
 import org.wildfly.security.authz.RoleMapper;
 import org.wildfly.security.authz.Roles;
 import org.wildfly.security.credential.PasswordCredential;
+import org.wildfly.security.examples.ElytronHttpExchange.ElytronUserAuthentication;
 import org.wildfly.security.http.HttpAuthenticator;
 import org.wildfly.security.http.HttpServerAuthenticationMechanismFactory;
 import org.wildfly.security.http.util.FilterServerMechanismFactory;
@@ -70,6 +77,7 @@ import org.wildfly.security.permission.PermissionVerifier;
 public class HelloWorld {
 
     private static final WildFlyElytronProvider elytronProvider = new WildFlyElytronProvider();
+    private static SecurityDomain securityDomain;
 
     public static void main(String[] args) throws Exception {
         StdErrLog logger = new StdErrLog();
@@ -79,7 +87,7 @@ public class HelloWorld {
 
         System.err.println("************ SETTING UP");
 
-        final SecurityDomain securityDomain = createSecurityDomain();
+        securityDomain = createSecurityDomain();
         Server server = new Server();
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(8080);
@@ -106,13 +114,37 @@ public class HelloWorld {
 
         security.setConstraintMappings(Collections.singletonList(mapping));
         //security.setAuthenticator(new BasicAuthenticator());
-        security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(createSecurityDomain()));
+        security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(securityDomain));
         security.setLoginService(loginService);
 
+        //////
+        HandlerWrapper wrapper = new HandlerWrapper()
+        {
+            @Override
+            public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+                Authentication authentication = baseRequest.getAuthentication();
+                SecurityIdentity securityIdentity = (authentication instanceof ElytronUserAuthentication) ? ((ElytronUserAuthentication) authentication).getSecurityIdentity() : null;
+                if (securityIdentity != null) {
+                    try {
+                        securityIdentity.runAs((Callable<Void>) () -> {
+                            super.handle(target, baseRequest, request, response);
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        throw new ServletException(e);
+                    }
+                } else {
+                    super.handle(target,baseRequest,request,response);
+                }
+            }
+        };
+        ///////
 
         ServletHandler servletHandler = new ServletHandler();
+        wrapper.setHandler(servletHandler);
         servletHandler.addServletWithMapping(BlockingServlet.class, "/status");
-        security.setHandler(servletHandler);
+        //security.setHandler(servletHandler);
+        security.setHandler(wrapper);
         server.start();
 
     }
@@ -195,9 +227,9 @@ public class HelloWorld {
                 HttpServletResponse response)
                 throws ServletException, IOException {
 
-            response.setContentType("application/json");
+            response.setContentType("text/plain");
             response.setStatus(HttpServletResponse.SC_OK);
-            response.getWriter().println("{ \"status\": \"ok\"}");
+            response.getWriter().println("Hello " + securityDomain.getCurrentSecurityIdentity().getPrincipal().getName() + "! You've logged in successfully using Elytron!");
         }
     }
 
