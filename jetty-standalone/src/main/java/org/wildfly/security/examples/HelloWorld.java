@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.security.Provider;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import javax.servlet.ServletException;
@@ -53,6 +54,10 @@ import org.wildfly.security.auth.server.MechanismConfiguration;
 import org.wildfly.security.auth.server.MechanismConfigurationSelector;
 import org.wildfly.security.auth.server.MechanismRealmConfiguration;
 import org.wildfly.security.auth.server.SecurityDomain;
+import org.wildfly.security.authz.MapAttributes;
+import org.wildfly.security.authz.RoleDecoder;
+import org.wildfly.security.authz.RoleMapper;
+import org.wildfly.security.authz.Roles;
 import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.http.HttpAuthenticator;
 import org.wildfly.security.http.HttpServerAuthenticationMechanismFactory;
@@ -119,13 +124,25 @@ public class HelloWorld {
         passwordMap.put("elytron", new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray()))))));
 
         SimpleMapBackedSecurityRealm simpleRealm = new SimpleMapBackedSecurityRealm(() -> new Provider[] { elytronProvider });
-        simpleRealm.setPasswordMap(passwordMap);
+        MapAttributes attributes = new MapAttributes();
+        HashSet<String> elytronRoles = new HashSet<>();
+        elytronRoles.add("user");
+        elytronRoles.add("admin");
+        attributes.addAll(RoleDecoder.KEY_ROLES, elytronRoles);
+        Map<String, SimpleRealmEntry> identityMap = new HashMap<>();
+        identityMap.put("elytron",
+                new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray())))), attributes));
+        identityMap.put("bob",
+                new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray()))))));
+        simpleRealm.setIdentityMap(identityMap);
+        //simpleRealm.setPasswordMap(passwordMap);
 
         SecurityDomain.Builder builder = SecurityDomain.builder()
                 .setDefaultRealmName("TestRealm");
 
         builder.addRealm("TestRealm", simpleRealm).build();
         builder.setPermissionMapper((principal, roles) -> PermissionVerifier.from(new LoginPermission()));
+        //builder.setRoleMapper(RoleMapper.constant())
 
         return builder.build();
     }

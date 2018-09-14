@@ -60,14 +60,18 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
                 .setIgnoreOptionalFailures(false) // TODO - Cover this one later.
                 .build();
 
+        boolean authenticated;
         try {
             System.err.println("**** ATTEMPTING TO AUTHENTICATE");
-            authenticator.authenticate();
+            authenticated = authenticator.authenticate();
         } catch (HttpAuthenticationException e) {
             throw new ServerAuthException(e);
         }
-
-        return request.getAuthentication();
+        if (authenticated) {
+            return request.getAuthentication();
+        } else {
+            return Authentication.SEND_CONTINUE;
+        }
     }
 
     @Override
