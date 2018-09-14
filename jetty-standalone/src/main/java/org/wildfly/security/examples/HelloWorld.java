@@ -34,8 +34,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
-import org.eclipse.jetty.security.HashLoginService;
-import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Request;
@@ -43,27 +41,17 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.eclipse.jetty.servlet.ServletHandler;
-import org.eclipse.jetty.util.log.AbstractLogger;
-import org.eclipse.jetty.util.log.Log;
-import org.eclipse.jetty.util.log.StdErrLog;
 import org.eclipse.jetty.util.security.Constraint;
 import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.permission.LoginPermission;
 import org.wildfly.security.auth.realm.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.auth.realm.SimpleRealmEntry;
-import org.wildfly.security.auth.server.HttpAuthenticationFactory;
-import org.wildfly.security.auth.server.MechanismConfiguration;
-import org.wildfly.security.auth.server.MechanismConfigurationSelector;
-import org.wildfly.security.auth.server.MechanismRealmConfiguration;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.authz.MapAttributes;
 import org.wildfly.security.authz.RoleDecoder;
 import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.examples.ElytronHttpExchange.ElytronUserAuthentication;
-import org.wildfly.security.http.HttpServerAuthenticationMechanismFactory;
-import org.wildfly.security.http.util.FilterServerMechanismFactory;
-import org.wildfly.security.http.util.SecurityProviderServerMechanismFactory;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.wildfly.security.permission.PermissionVerifier;
@@ -79,10 +67,6 @@ public class HelloWorld {
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(8080);
         server.setConnectors(new Connector[] {connector});
-
-        LoginService loginService = new HashLoginService("MyRealm",
-                "src/test/resources/realm.properties");
-        server.addBean(loginService);
 
         ConstraintSecurityHandler security = new ConstraintSecurityHandler();
         server.setHandler(security);
@@ -100,8 +84,6 @@ public class HelloWorld {
         security.setConstraintMappings(Collections.singletonList(mapping));
         security.setAuthenticator(new ElytronAuthenticator(securityDomain));
         //security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(securityDomain));
-        security.setLoginService(loginService);
-
 
         HandlerWrapper wrapper = new HandlerWrapper()
         {
