@@ -6,7 +6,6 @@ import org.eclipse.jetty.security.UserAuthentication;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.server.UserIdentity;
-import org.wildfly.security.auth.server.FlexibleIdentityAssociation;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.authz.Roles;
 import org.wildfly.security.http.HttpAuthenticationException;
@@ -32,7 +31,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,7 +42,6 @@ public class ElytronHttpExchange implements HttpExchangeSpi {
 
     private final Request request;
     private final Response response;
-    //private final FlexibleIdentityAssociation flexibleIdentityAssociation;
 
     public ElytronHttpExchange(Request request, Response response) {
         this.request = request;
@@ -238,7 +235,6 @@ public class ElytronHttpExchange implements HttpExchangeSpi {
 
         @Override
         public void logout() {
-
         }
 
         public SecurityIdentity getSecurityIdentity() {

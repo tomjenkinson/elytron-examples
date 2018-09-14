@@ -49,7 +49,6 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
 
     @Override
     public Authentication validateRequest(ServletRequest servletRequest, ServletResponse servletResponse, boolean mandatory) throws ServerAuthException {
-        System.out.println("*************** VALIDATING REQUEST");
         Request request = (Request) servletRequest;
         Response response = (Response) servletResponse;
         HttpAuthenticator authenticator = HttpAuthenticator.builder()
@@ -62,7 +61,6 @@ public class ElytronAuthenticatorWrapper implements Authenticator {
 
         boolean authenticated;
         try {
-            System.err.println("**** ATTEMPTING TO AUTHENTICATE");
             authenticated = authenticator.authenticate();
         } catch (HttpAuthenticationException e) {
             throw new ServerAuthException(e);

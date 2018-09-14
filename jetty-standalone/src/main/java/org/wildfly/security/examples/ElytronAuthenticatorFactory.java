@@ -38,7 +38,6 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
     private HttpAuthenticationFactory httpAuthenticationFactory;
 
     public ElytronAuthenticatorFactory(SecurityDomain securityDomain) throws Exception {
-        System.err.println("******** CREATING AUTHENTICATOR FACTORY");
         this.securityDomain = securityDomain;
         HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {new WildFlyElytronProvider()});
         HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "BASIC");
@@ -56,14 +55,6 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
     @Override
     public Authenticator getAuthenticator(Server server, ServletContext context, Authenticator.AuthConfiguration configuration, IdentityService identityService, LoginService loginService) {
         try {
-            /*PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR);
-            SecurityDomain.Builder builder = SecurityDomain.builder()
-                    .setDefaultRealmName("TestRealm");
-
-            builder.addRealm("TestRealm", (SecurityRealm) Thread.currentThread().getContextClassLoader().loadClass(this.securityRealmType).newInstance()).setRoleDecoder((RoleDecoder) Thread.currentThread().getContextClassLoader().loadClass(this.roleDecoderType).newInstance());*/
-            System.err.println("\n\n\n********** GETTING AUTHENTICATOR ************");
-
-
             return new ElytronAuthenticatorWrapper(configuration, new Supplier<List<HttpServerAuthenticationMechanism>>() {
                 @Override
                 public List<HttpServerAuthenticationMechanism> get() {
@@ -76,7 +67,6 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
     }
 
     private List<HttpServerAuthenticationMechanism> getAuthenticationMechanisms() {
-        System.err.println("\n\n\n********** GETTING AUTHENTICATION MECHANISMS ");
         return httpAuthenticationFactory.getMechanismNames().stream()
                 .map(new Function<String, HttpServerAuthenticationMechanism>() {
                     @Override
@@ -89,7 +79,6 @@ public class ElytronAuthenticatorFactory implements Authenticator.Factory {
     }
 
     private HttpServerAuthenticationMechanism createMechanism(final String mechanismName) {
-        System.err.println("\n\n\n **************** CREATING MECHANISMS");
         try {
             return httpAuthenticationFactory.createMechanism(mechanismName);
         } catch (HttpAuthenticationException e) {

@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2017 Red Hat, Inc., and individual contributors
+ * Copyright 2018 Red Hat, Inc., and individual contributors
  * as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,15 +32,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.HashLoginService;
 import org.eclipse.jetty.security.LoginService;
-import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -62,11 +59,8 @@ import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.authz.MapAttributes;
 import org.wildfly.security.authz.RoleDecoder;
-import org.wildfly.security.authz.RoleMapper;
-import org.wildfly.security.authz.Roles;
 import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.examples.ElytronHttpExchange.ElytronUserAuthentication;
-import org.wildfly.security.http.HttpAuthenticator;
 import org.wildfly.security.http.HttpServerAuthenticationMechanismFactory;
 import org.wildfly.security.http.util.FilterServerMechanismFactory;
 import org.wildfly.security.http.util.SecurityProviderServerMechanismFactory;
@@ -80,13 +74,6 @@ public class HelloWorld {
     private static SecurityDomain securityDomain;
 
     public static void main(String[] args) throws Exception {
-        StdErrLog logger = new StdErrLog();
-        logger.setDebugEnabled(true);
-        logger.setLevel(AbstractLogger.LEVEL_ALL);
-        Log.setLog(logger);
-
-        System.err.println("************ SETTING UP");
-
         securityDomain = createSecurityDomain();
         Server server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -97,8 +84,6 @@ public class HelloWorld {
                 "src/test/resources/realm.properties");
         server.addBean(loginService);
 
-        //ServletHandler servletHandler = new ServletHandler();
-        //server.setHandler(servletHandler);
         ConstraintSecurityHandler security = new ConstraintSecurityHandler();
         server.setHandler(security);
 
@@ -117,7 +102,7 @@ public class HelloWorld {
         security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(securityDomain));
         security.setLoginService(loginService);
 
-        //////
+
         HandlerWrapper wrapper = new HandlerWrapper()
         {
             @Override
@@ -138,12 +123,10 @@ public class HelloWorld {
                 }
             }
         };
-        ///////
 
         ServletHandler servletHandler = new ServletHandler();
         wrapper.setHandler(servletHandler);
         servletHandler.addServletWithMapping(BlockingServlet.class, "/status");
-        //security.setHandler(servletHandler);
         security.setHandler(wrapper);
         server.start();
 
@@ -167,14 +150,12 @@ public class HelloWorld {
         identityMap.put("bob",
                 new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray()))))));
         simpleRealm.setIdentityMap(identityMap);
-        //simpleRealm.setPasswordMap(passwordMap);
 
         SecurityDomain.Builder builder = SecurityDomain.builder()
                 .setDefaultRealmName("TestRealm");
 
         builder.addRealm("TestRealm", simpleRealm).build();
         builder.setPermissionMapper((principal, roles) -> PermissionVerifier.from(new LoginPermission()));
-        //builder.setRoleMapper(RoleMapper.constant())
 
         return builder.build();
     }
@@ -194,31 +175,6 @@ public class HelloWorld {
                 .setFactory(httpServerMechanismFactory)
                 .build();
     }
-
-    /*private static HttpHandler wrap(final HttpHandler toWrap, final SecurityDomain securityDomain) {
-        HttpAuthenticationFactory httpAuthenticationFactory = createHttpAuthenticationFactory(securityDomain);
-
-        HttpHandler rootHandler = new ElytronRunAsHandler(toWrap);
-
-        //
-         // In this example we know the ElytronRunAsHandler is calling a single handler that is not going to switch to blocking,
-         // as the ElytronRunAsHandler is associating the identity with a ThreadLocal if it was possible the handler could switch
-         // from non-blocking to blocking we would insert the BlockingHandler here.
-         //
-
-        rootHandler = new AuthenticationCallHandler(rootHandler);
-        rootHandler = new AuthenticationConstraintHandler(rootHandler);
-
-        return ElytronContextAssociationHandler.builder()
-                .setNext(rootHandler)
-                .setMechanismSupplier(() -> {
-                    try {
-                        return Collections.singletonList(httpAuthenticationFactory.createMechanism("BASIC"));
-                    } catch (HttpAuthenticationException e) {
-                        throw new RuntimeException(e);
-                    }
-        }).build();
-    }*/
 
     public static class BlockingServlet extends HttpServlet {
 
