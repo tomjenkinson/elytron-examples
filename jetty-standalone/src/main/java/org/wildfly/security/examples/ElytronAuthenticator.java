@@ -31,8 +31,8 @@ public class ElytronAuthenticator implements Authenticator {
 
     public ElytronAuthenticator(SecurityDomain securityDomain) {
         this.securityDomain = securityDomain;
-        HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {new WildFlyElytronProvider()});
-        HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "BASIC");
+        //HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {new WildFlyElytronProvider()});
+        HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new CustomMechanismFactory();
 
         httpAuthenticationFactory = HttpAuthenticationFactory.builder()
                 .setSecurityDomain(securityDomain)
@@ -51,7 +51,7 @@ public class ElytronAuthenticator implements Authenticator {
 
     @Override
     public String getAuthMethod() {
-        return Constraint.__BASIC_AUTH;
+        return CustomMechanismFactory.CUSTOM_NAME;
     }
 
     @Override
