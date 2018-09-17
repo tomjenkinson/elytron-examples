@@ -35,9 +35,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
- */
 public class ElytronHttpExchange implements HttpExchangeSpi {
 
     private final Request request;

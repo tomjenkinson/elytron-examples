@@ -20,10 +20,12 @@ package org.wildfly.security.examples;
 import static org.wildfly.security.password.interfaces.ClearPassword.ALGORITHM_CLEAR;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.security.Provider;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -50,6 +52,7 @@ import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.authz.MapAttributes;
 import org.wildfly.security.authz.RoleDecoder;
+import org.wildfly.security.credential.Credential;
 import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.examples.ElytronHttpExchange.ElytronUserAuthentication;
 import org.wildfly.security.password.PasswordFactory;
@@ -66,7 +69,7 @@ public class HelloWorld {
         Server server = new Server();
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(8080);
-        server.setConnectors(new Connector[] {connector});
+        server.setConnectors(new Connector[] { connector });
 
         ConstraintSecurityHandler security = new ConstraintSecurityHandler();
         server.setHandler(security);
@@ -75,15 +78,14 @@ public class HelloWorld {
         Constraint constraint = new Constraint();
         constraint.setName("auth");
         constraint.setAuthenticate(true);
-        constraint.setRoles(new String[] { "user", "admin" });
+        constraint.setRoles(new String[] { "admin" });
 
         ConstraintMapping mapping = new ConstraintMapping();
-        mapping.setPathSpec("/status");
+        mapping.setPathSpec("/secured");
         mapping.setConstraint(constraint);
 
         security.setConstraintMappings(Collections.singletonList(mapping));
         security.setAuthenticator(new ElytronAuthenticator(securityDomain));
-        //security.setAuthenticatorFactory(new ElytronAuthenticatorFactory(securityDomain));
 
         HandlerWrapper wrapper = new HandlerWrapper()
         {
@@ -108,29 +110,17 @@ public class HelloWorld {
 
         ServletHandler servletHandler = new ServletHandler();
         wrapper.setHandler(servletHandler);
-        servletHandler.addServletWithMapping(BlockingServlet.class, "/status");
+        servletHandler.addServletWithMapping(BlockingServlet.class, "/secured");
         security.setHandler(wrapper);
         server.start();
 
     }
 
     private static SecurityDomain createSecurityDomain() throws Exception {
-        PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR, elytronProvider);
-
-        Map<String, SimpleRealmEntry> passwordMap = new HashMap<>();
-        passwordMap.put("elytron", new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray()))))));
-
         SimpleMapBackedSecurityRealm simpleRealm = new SimpleMapBackedSecurityRealm(() -> new Provider[] { elytronProvider });
-        MapAttributes attributes = new MapAttributes();
-        HashSet<String> elytronRoles = new HashSet<>();
-        elytronRoles.add("user");
-        elytronRoles.add("admin");
-        attributes.addAll(RoleDecoder.KEY_ROLES, elytronRoles);
         Map<String, SimpleRealmEntry> identityMap = new HashMap<>();
-        identityMap.put("elytron",
-                new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray())))), attributes));
-        identityMap.put("bob",
-                new SimpleRealmEntry(Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("secret".toCharArray()))))));
+        identityMap.put("alice", new SimpleRealmEntry(getCredentialsForClearPassword("alice123+"), getAttributesForRoles("employee", "admin")));
+        identityMap.put("bob", new SimpleRealmEntry(getCredentialsForClearPassword("bob123+"), getAttributesForRoles("employee")));
         simpleRealm.setIdentityMap(identityMap);
 
         SecurityDomain.Builder builder = SecurityDomain.builder()
@@ -149,14 +139,21 @@ public class HelloWorld {
                 HttpServletResponse response)
                 throws ServletException, IOException {
 
-            response.setContentType("text/plain");
+            response.setContentType("text/html");
             response.setStatus(HttpServletResponse.SC_OK);
-            response.getWriter().println("Hello " + securityDomain.getCurrentSecurityIdentity().getPrincipal().getName() + "! You've logged in successfully using Elytron!");
+            PrintWriter writer = response.getWriter();
+            writer.println("<html>");
+            writer.println("  <head><title>Embedded Jetty Secured With Elytron</title></head>");
+            writer.println("  <body>");
+            writer.println("    <h2>Embedded Jetty Server Secured Using Elytron</h2>");
+            writer.println("    <p><font size=\"5\" color=\"blue\">Hello " + securityDomain.getCurrentSecurityIdentity().getPrincipal().getName() + "! You've authenticated successfully using Elytron!" + "</font></p>");
+            writer.println("  </body>");
+            writer.println("</html>");
         }
     }
 
     /**
-     * SIMPLE JETTY AUTHENTICATION, ACCESS http://localhost:8080/status using user:password
+     * SIMPLE JETTY AUTHENTICATION, ACCESS http://localhost:8080/secured using user:password
      */
     /*public static void main(String[] args) throws Exception {
     https://www.eclipse.org/jetty/documentation/9.4.x/embedded-examples.html
@@ -182,7 +179,7 @@ public class HelloWorld {
         constraint.setRoles(new String[] { "user", "admin" });
 
         ConstraintMapping mapping = new ConstraintMapping();
-        mapping.setPathSpec("/status");
+        mapping.setPathSpec("/secured");
         mapping.setConstraint(constraint);
 
         security.setConstraintMappings(Collections.singletonList(mapping));
@@ -191,10 +188,26 @@ public class HelloWorld {
 
 
         ServletHandler servletHandler = new ServletHandler();
-        servletHandler.addServletWithMapping(BlockingServlet.class, "/status");
+        servletHandler.addServletWithMapping(BlockingServlet.class, "/secured");
         security.setHandler(servletHandler);
         server.start();
 
     }*/
+    private static List<Credential> getCredentialsForClearPassword(String clearPassword) throws Exception {
+        PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR, elytronProvider);
+        return Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec(clearPassword.toCharArray()))));
+    }
+
+    private static MapAttributes getAttributesForRoles(String... roles) {
+        MapAttributes attributes = new MapAttributes();
+        HashSet<String> rolesSet = new HashSet<>();
+        if (roles != null) {
+            for (String role : roles) {
+                rolesSet.add(role);
+            }
+        }
+        attributes.addAll(RoleDecoder.KEY_ROLES, rolesSet);
+        return attributes;
+    }
 
 }

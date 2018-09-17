@@ -14,7 +14,6 @@ import org.wildfly.security.auth.server.MechanismRealmConfiguration;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.http.HttpAuthenticationException;
 import org.wildfly.security.http.HttpAuthenticator;
-import org.wildfly.security.http.HttpServerAuthenticationMechanism;
 import org.wildfly.security.http.HttpServerAuthenticationMechanismFactory;
 import org.wildfly.security.http.util.FilterServerMechanismFactory;
 import org.wildfly.security.http.util.SecurityProviderServerMechanismFactory;
@@ -23,8 +22,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 
 import java.security.Provider;
-import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class ElytronAuthenticator implements Authenticator {
@@ -80,7 +77,6 @@ public class ElytronAuthenticator implements Authenticator {
                         .collect(Collectors.toList()))
                 .setHttpExchangeSpi(new ElytronHttpExchange(request, response))
                 .setRequired(mandatory)
-                .setIgnoreOptionalFailures(false) // TODO - Cover this one later.
                 .build();
 
         boolean authenticated;
