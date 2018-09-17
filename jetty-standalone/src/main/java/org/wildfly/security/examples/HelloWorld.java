@@ -65,26 +65,25 @@ public class HelloWorld {
     private static SecurityDomain securityDomain;
 
     public static void main(String[] args) throws Exception {
-        securityDomain = createSecurityDomain();
-        Server server = new Server();
-        ServerConnector connector = new ServerConnector(server);
-        connector.setPort(8080);
-        server.setConnectors(new Connector[] { connector });
+        // Create the Jetty server instance
+        Server server = new Server(8080);
 
         ConstraintSecurityHandler security = new ConstraintSecurityHandler();
         server.setHandler(security);
 
-
+        // Create a constraint that specifies that accessing "/secured" requires authentication
+        // and the authenticated user must have "admin" role
         Constraint constraint = new Constraint();
         constraint.setName("auth");
         constraint.setAuthenticate(true);
         constraint.setRoles(new String[] { "admin" });
-
         ConstraintMapping mapping = new ConstraintMapping();
         mapping.setPathSpec("/secured");
         mapping.setConstraint(constraint);
-
         security.setConstraintMappings(Collections.singletonList(mapping));
+
+        // Specify that authentication should be handled by ElytronAuthenticator
+        securityDomain = createSecurityDomain();
         security.setAuthenticator(new ElytronAuthenticator(securityDomain));
 
         HandlerWrapper wrapper = new HandlerWrapper()
@@ -110,29 +109,34 @@ public class HelloWorld {
 
         ServletHandler servletHandler = new ServletHandler();
         wrapper.setHandler(servletHandler);
-        servletHandler.addServletWithMapping(BlockingServlet.class, "/secured");
+        servletHandler.addServletWithMapping(SecuredServlet.class, "/secured");
         security.setHandler(wrapper);
         server.start();
 
     }
 
     private static SecurityDomain createSecurityDomain() throws Exception {
+        // Create an Elytron map-backed security realm
         SimpleMapBackedSecurityRealm simpleRealm = new SimpleMapBackedSecurityRealm(() -> new Provider[] { elytronProvider });
         Map<String, SimpleRealmEntry> identityMap = new HashMap<>();
+
+        // Add user alice
         identityMap.put("alice", new SimpleRealmEntry(getCredentialsForClearPassword("alice123+"), getAttributesForRoles("employee", "admin")));
+
+        // Add user bob
         identityMap.put("bob", new SimpleRealmEntry(getCredentialsForClearPassword("bob123+"), getAttributesForRoles("employee")));
         simpleRealm.setIdentityMap(identityMap);
 
+        // Add the map-backed security realm to the security domain's list of realms
         SecurityDomain.Builder builder = SecurityDomain.builder()
-                .setDefaultRealmName("TestRealm");
-
-        builder.addRealm("TestRealm", simpleRealm).build();
-        builder.setPermissionMapper((principal, roles) -> PermissionVerifier.from(new LoginPermission()));
+                .addRealm("ExampleRealm", simpleRealm).build()
+                .setPermissionMapper((principal, roles) -> PermissionVerifier.from(new LoginPermission()))
+                .setDefaultRealmName("ExampleRealm");
 
         return builder.build();
     }
 
-    public static class BlockingServlet extends HttpServlet {
+    public static class SecuredServlet extends HttpServlet {
 
         protected void doGet(
                 HttpServletRequest request,
@@ -152,47 +156,6 @@ public class HelloWorld {
         }
     }
 
-    /**
-     * SIMPLE JETTY AUTHENTICATION, ACCESS http://localhost:8080/secured using user:password
-     */
-    /*public static void main(String[] args) throws Exception {
-    https://www.eclipse.org/jetty/documentation/9.4.x/embedded-examples.html
-        final SecurityDomain securityDomain = createSecurityDomain();
-        Server server = new Server();
-        ServerConnector connector = new ServerConnector(server);
-        connector.setPort(8080);
-        server.setConnectors(new Connector[] {connector});
-
-        LoginService loginService = new HashLoginService("MyRealm",
-                "src/test/resources/realm.properties");
-        server.addBean(loginService);
-
-        //ServletHandler servletHandler = new ServletHandler();
-        //server.setHandler(servletHandler);
-        ConstraintSecurityHandler security = new ConstraintSecurityHandler();
-        server.setHandler(security);
-
-
-        Constraint constraint = new Constraint();
-        constraint.setName("auth");
-        constraint.setAuthenticate(true);
-        constraint.setRoles(new String[] { "user", "admin" });
-
-        ConstraintMapping mapping = new ConstraintMapping();
-        mapping.setPathSpec("/secured");
-        mapping.setConstraint(constraint);
-
-        security.setConstraintMappings(Collections.singletonList(mapping));
-        security.setAuthenticator(new BasicAuthenticator());
-        security.setLoginService(loginService);
-
-
-        ServletHandler servletHandler = new ServletHandler();
-        servletHandler.addServletWithMapping(BlockingServlet.class, "/secured");
-        security.setHandler(servletHandler);
-        server.start();
-
-    }*/
     private static List<Credential> getCredentialsForClearPassword(String clearPassword) throws Exception {
         PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR, elytronProvider);
         return Collections.singletonList(new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec(clearPassword.toCharArray()))));
