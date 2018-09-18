@@ -36,6 +36,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.security.HashLoginService;
+import org.eclipse.jetty.security.LoginService;
+import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
@@ -63,6 +66,41 @@ public class HelloWorld {
     private static SecurityDomain securityDomain;
 
     public static void main(String[] args) throws Exception {
+        // Create the Jetty server instance
+        Server server = new Server(8080);
+
+        ConstraintSecurityHandler security = new ConstraintSecurityHandler();
+        server.setHandler(security);
+
+        // Create a constraint that specifies that accessing "/secured" requires authentication
+        // and the authenticated user must have "admin" role
+        Constraint constraint = new Constraint();
+        constraint.setName("auth");
+        constraint.setAuthenticate(true);
+        constraint.setRoles(new String[] { "admin" });
+        ConstraintMapping mapping = new ConstraintMapping();
+        mapping.setPathSpec("/secured");
+        mapping.setConstraint(constraint);
+        security.setConstraintMappings(Collections.singletonList(mapping));
+
+        // Security realm configuration
+        LoginService loginService = new HashLoginService("MyRealm",
+                "src/test/resources/realm.properties");
+        server.addBean(loginService);
+        security.setLoginService(loginService);
+
+        // Use Jetty's BasicAuthenticator
+        security.setAuthenticator(new BasicAuthenticator());
+
+        ServletHandler servletHandler = new ServletHandler();
+        servletHandler.addServletWithMapping(SecuredServlet.class, "/secured");
+        security.setHandler(servletHandler);
+        server.start();
+
+    }
+
+
+    /*public static void main(String[] args) throws Exception {
         // Create the Jetty server instance
         Server server = new Server(8080);
 
@@ -111,7 +149,7 @@ public class HelloWorld {
         security.setHandler(wrapper);
         server.start();
 
-    }
+    }*/
 
     private static SecurityDomain createSecurityDomain() throws Exception {
         // Create an Elytron map-backed security realm
@@ -145,10 +183,11 @@ public class HelloWorld {
             response.setStatus(HttpServletResponse.SC_OK);
             PrintWriter writer = response.getWriter();
             writer.println("<html>");
-            writer.println("  <head><title>Embedded Jetty Secured With Elytron</title></head>");
+            //writer.println("  <head><title>Embedded Jetty Secured With Elytron</title></head>");
             writer.println("  <body>");
-            writer.println("    <h2>Embedded Jetty Server Secured Using Elytron</h2>");
-            writer.println("    <p><font size=\"5\" color=\"blue\">Hello " + securityDomain.getCurrentSecurityIdentity().getPrincipal().getName() + "! You've authenticated successfully using Elytron!" + "</font></p>");
+            writer.println("    <h2>Embedded Jetty Server</h2>");
+            //writer.println("    <h2>Embedded Jetty Server Secured Using Elytron</h2>");
+            //writer.println("    <p><font size=\"5\" color=\"blue\">Hello " + securityDomain.getCurrentSecurityIdentity().getPrincipal().getName() + "! You've authenticated successfully using Elytron!" + "</font></p>");
             writer.println("  </body>");
             writer.println("</html>");
         }
