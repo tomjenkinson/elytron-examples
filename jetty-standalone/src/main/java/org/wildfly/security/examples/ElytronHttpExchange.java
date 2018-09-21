@@ -81,7 +81,9 @@ public class ElytronHttpExchange implements HttpExchangeSpi {
         ArrayList<String> rolesList = new ArrayList<>();
         roles.spliterator().forEachRemaining(rolesList::add);
 
-        this.request.setAuthentication(new ElytronUserAuthentication(this.request.getAuthType(), new DefaultUserIdentity(subject, principal, rolesList.toArray(new String[rolesList.size()])), securityIdentity));
+        this.request.setAuthentication(new ElytronUserAuthentication(this.request.getAuthType(),
+                new DefaultUserIdentity(subject, principal, rolesList.toArray(new String[rolesList.size()])),
+                securityIdentity));
     }
 
     @Override

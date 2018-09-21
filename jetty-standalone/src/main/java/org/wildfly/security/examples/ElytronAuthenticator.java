@@ -32,7 +32,7 @@ public class ElytronAuthenticator implements Authenticator {
     public ElytronAuthenticator(SecurityDomain securityDomain) {
         this.securityDomain = securityDomain;
         HttpServerAuthenticationMechanismFactory providerFactory = new SecurityProviderServerMechanismFactory(() -> new Provider[] {new WildFlyElytronProvider()});
-        HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "BASIC");
+        HttpServerAuthenticationMechanismFactory httpServerMechanismFactory = new FilterServerMechanismFactory(providerFactory, true, "FORM");
 
         httpAuthenticationFactory = HttpAuthenticationFactory.builder()
                 .setSecurityDomain(securityDomain)

@@ -39,11 +39,15 @@ import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.HashLoginService;
 import org.eclipse.jetty.security.LoginService;
 import org.eclipse.jetty.security.authentication.BasicAuthenticator;
+import org.eclipse.jetty.security.authentication.FormAuthenticator;
 import org.eclipse.jetty.server.Authentication;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerWrapper;
+import org.eclipse.jetty.servlet.DefaultServlet;
+import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.security.Constraint;
 import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.permission.LoginPermission;
@@ -66,6 +70,95 @@ public class HelloWorld {
     private static SecurityDomain securityDomain;
 
     public static void main(String[] args) throws Exception {
+
+        /*// Create the Jetty server instance
+        Server server = new Server(8080);
+
+        ConstraintSecurityHandler security = new ConstraintSecurityHandler();
+        server.setHandler(security);
+
+        // Create a constraint that specifies that accessing "/secured" requires authentication
+        // and the authenticated user must have "admin" role
+        Constraint constraint = new Constraint();
+        constraint.setName("auth");
+        constraint.setAuthenticate(true);
+        constraint.setRoles(new String[]{"admin"});
+        ConstraintMapping mapping = new ConstraintMapping();
+        mapping.setPathSpec("/secured");
+        mapping.setConstraint(constraint);
+        security.setConstraintMappings(Collections.singletonList(mapping));
+
+        // Security realm configuration
+        // alice: alice123+,admin,employee
+        // bob: bob123+,employee
+        LoginService loginService = new HashLoginService("MyRealm",
+                "src/test/resources/realm.properties");
+        server.addBean(loginService);
+        security.setLoginService(loginService);
+
+        // Use Jetty's BasicAuthenticator
+        security.setAuthenticator(new BasicAuthenticator());
+
+        // Configure the handler we are securing
+        ServletHandler servletHandler = new ServletHandler();
+        servletHandler.addServletWithMapping(SecuredServlet.class, "/secured");
+        security.setHandler(servletHandler);
+
+        server.start();*/
+        Server server = new Server(8080);
+        ServletContextHandler context = new ServletContextHandler(server, "/", ServletContextHandler.SESSIONS | ServletContextHandler.SECURITY);
+
+        context.addServlet(new ServletHolder(new DefaultServlet() {
+            @Override
+            protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+                response.getWriter().append("hello " + request.getUserPrincipal().getName());
+            }
+        }), "/*");
+
+        context.addServlet(new ServletHolder(new DefaultServlet() {
+            @Override
+            protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+                response.getWriter().append("<html><form method='POST' action='/j_security_check'>"
+                        + "<input type='text' name='j_username'/>"
+                        + "<input type='password' name='j_password'/>"
+                        + "<input type='submit' value='Login'/></form></html>");
+            }
+        }), "/login");
+
+        Constraint constraint = new Constraint();
+        constraint.setName(Constraint.__FORM_AUTH);
+        constraint.setRoles(new String[]{"user","admin","moderator"});
+        constraint.setAuthenticate(true);
+
+        ConstraintMapping constraintMapping = new ConstraintMapping();
+        constraintMapping.setConstraint(constraint);
+        constraintMapping.setPathSpec("/*");
+
+        /*ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
+        securityHandler.addConstraintMapping(constraintMapping);
+        LoginService loginService = new HashLoginService("MyRealm",
+                "src/test/resources/realm.properties");
+        server.addBean(loginService);
+        securityHandler.setLoginService(loginService);*
+
+        FormAuthenticator authenticator = new FormAuthenticator("/login", "/login", false);
+        securityHandler.setAuthenticator(authenticator);
+
+        context.setSecurityHandler(securityHandler);*/
+
+        ConstraintSecurityHandler security = new ConstraintSecurityHandler();
+        security.addConstraintMapping(constraintMapping);
+        securityDomain = createSecurityDomain();
+        security.setAuthenticator(new ElytronAuthenticator(securityDomain));
+        context.setSecurityHandler(security);
+
+        server.start();
+        server.join();
+    }
+
+
+    /*public static void main(String[] args) throws Exception {
+
         // Create the Jetty server instance
         Server server = new Server(8080);
 
@@ -77,27 +170,74 @@ public class HelloWorld {
         Constraint constraint = new Constraint();
         constraint.setName("auth");
         constraint.setAuthenticate(true);
-        constraint.setRoles(new String[] { "admin" });
+        constraint.setRoles(new String[]{"admin"});
         ConstraintMapping mapping = new ConstraintMapping();
         mapping.setPathSpec("/secured");
         mapping.setConstraint(constraint);
         security.setConstraintMappings(Collections.singletonList(mapping));
 
-        // Security realm configuration
-        LoginService loginService = new HashLoginService("MyRealm",
-                "src/test/resources/realm.properties");
-        server.addBean(loginService);
-        security.setLoginService(loginService);
+        // Specify that authentication should be handled by ElytronAuthenticator
+        securityDomain = createSecurityDomain();
+        security.setAuthenticator(new ElytronAuthenticator(securityDomain));
 
-        // Use Jetty's BasicAuthenticator
-        security.setAuthenticator(new BasicAuthenticator());
+        HandlerWrapper wrapper = new HandlerWrapper()
+        {
+            @Override
+            public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+                    throws IOException, ServletException {
+                Authentication authentication = baseRequest.getAuthentication();
+                SecurityIdentity securityIdentity = (authentication instanceof ElytronUserAuthentication) ?
+                        ((ElytronUserAuthentication) authentication).getSecurityIdentity() : null;
+                if (securityIdentity != null) {
+                    try {
+                        securityIdentity.runAs((Callable<Void>) () -> {
+                            super.handle(target, baseRequest, request, response);
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        throw new ServletException(e);
+                    }
+                } else {
+                    super.handle(target,baseRequest,request,response);
+                }
+            }
+        };
 
         ServletHandler servletHandler = new ServletHandler();
+        wrapper.setHandler(servletHandler);
         servletHandler.addServletWithMapping(SecuredServlet.class, "/secured");
-        security.setHandler(servletHandler);
+        security.setHandler(wrapper);
         server.start();
+    }*/
 
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     /*public static void main(String[] args) throws Exception {
@@ -152,6 +292,7 @@ public class HelloWorld {
     }*/
 
     private static SecurityDomain createSecurityDomain() throws Exception {
+
         // Create an Elytron map-backed security realm
         SimpleMapBackedSecurityRealm simpleRealm = new SimpleMapBackedSecurityRealm(() -> new Provider[] { elytronProvider });
         Map<String, SimpleRealmEntry> identityMap = new HashMap<>();
